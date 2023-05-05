@@ -10,24 +10,34 @@ CLIENTS = dict()
 lock = threading.Lock()
 threads = list()
 
-def thread_callback(conn, addr):
-    with conn:
+def thread_callback(sock, addr):
+    """
+    Receives a message from client and parses
+    its information to do its commandself.
+    It contains two commands that it parses
+        --"/EX" will close the connection with the client
+        --"/BM" will broadcast the message to the rest of clients
+        Params:
+            sock (socket): A socket object
+            addr (address): address of client
+        Returns: 
+            None 
+    """
+    with sock:
         while True:
-            data = recv_msg(conn)
+            data = recv_msg(sock)
             if data == None: break
             (command, username, *msg) = data.decode(FORMAT).split()
-            if command == "EX":
+            if command == "/EX":
                 with lock:
                     del CLIENTS[username]
                 break
-            elif command == "BM":
+            elif command == "/BM":
                 msg = ' '.join([str(word) for word in msg])
                 with lock:
                     for _, (client, client_conn) in enumerate(CLIENTS.items()):
                         if (not client == username):
-                            send_msg(client_conn, msg.encode(FORMAT))
-            else:
-                print(data)
+                            send_encoded_msg(client_conn, msg)
         print(f"Connection closed by {addr}")
 
 try:
